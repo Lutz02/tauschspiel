@@ -1072,8 +1072,20 @@ function showAuth() {
   document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
 }
-
 async function doLogin() {
+  const team = document.getElementById('login-team').value.trim();
+  const pw = document.getElementById('login-pw').value.trim();
+  
+  // DEBUG
+  console.log('Eingetippt:', team, '|', pw);
+  console.log('btoa ergibt:', btoa(pw));
+  
+  const { data, error } = await sb.from('teams').select('*').ilike('name', team).single();
+  console.log('DB Resultat:', data, error);
+  console.log('DB Passwort:', data?.password);
+  console.log('Vergleich:', data?.password === btoa(pw));
+  
+
   const team = document.getElementById('login-team').value.trim();
   const pw = document.getElementById('login-pw').value.trim();
   if (!team || !pw) { toast('Bitte alles ausfüllen!', 'bad'); return; }
