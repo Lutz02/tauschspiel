@@ -683,7 +683,8 @@
     100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
   }
 
-  /* ── MISC ── */
+  .mobile-only-flex { display: flex; margin-bottom: 24px; }
+  @media (min-width: 768px) { .mobile-only-flex { display: none; } }
   .divider { height: 1px; background: var(--border); margin: 20px 0; }
   .empty-state {
     text-align: center;
@@ -773,7 +774,8 @@
           <div class="user-team" id="sidebar-value">CHF 0.00</div>
         </div>
       </div>
-      <button class="btn btn-secondary btn-sm" style="width:100%" onclick="doLogout()">Abmelden</button>
+      <button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:8px" onclick="doSwitchTeam()">🔀 Team wechseln</button>
+      <button class="btn btn-danger btn-sm" style="width:100%" onclick="doLogout()">Abmelden</button>
     </div>
   </nav>
 
@@ -856,6 +858,12 @@
           Gewinnt das Team mit dem höchsten <strong style="color:var(--green)">Gesamtwert</strong> am Ende. 🏆
         </div>
       </div>
+
+      <!-- Team wechseln (mobile) -->
+      <div style="display:flex;gap:10px" class="mobile-only-flex">
+        <button class="btn btn-secondary" style="flex:1" onclick="doSwitchTeam()">🔀 Team wechseln</button>
+        <button class="btn btn-danger" style="flex:1" onclick="doLogout()">Abmelden</button>
+      </div>
     </div>
 
     <!-- RANKING PAGE -->
@@ -895,9 +903,18 @@
         <div class="form-group">
           <label>Geschätzter Wert des neuen Gegenstands (CHF)</label>
           <div class="value-slider-wrap">
-            <div class="slider-val" id="slider-val-display">1.00</div>
-            <input type="range" class="value-slider" id="trade-value-slider" min="0" max="500" step="1" value="1" oninput="updateSliderVal(this.value)">
-            <div class="slider-labels"><span>CHF 0</span><span>CHF 50</span><span>CHF 100</span><span>CHF 500+</span></div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <div class="slider-val" id="slider-val-display" style="flex:1;text-align:left">1.00</div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:12px;color:var(--muted)">CHF</span>
+                <input type="number" id="trade-value-manual" min="0" max="99999" step="0.10" value="1.00"
+                  style="width:90px;padding:8px 10px;font-family:'DM Mono',monospace;font-size:15px;text-align:right"
+                  oninput="syncFromManual(this.value)" placeholder="0.00">
+              </div>
+            </div>
+            <input type="range" class="value-slider" id="trade-value-slider" min="0" max="100" step="0.10" value="1" oninput="updateSliderVal(this.value)">
+            <div class="slider-labels"><span>CHF 0</span><span>CHF 25</span><span>CHF 50</span><span>CHF 100</span></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center">Slider für schnelle Eingabe · Zahlenfeld für höhere Werte</div>
           </div>
         </div>
 
@@ -1007,9 +1024,9 @@
 // ─────────────────────────────────────────────
 // CONFIG — SUPABASE (hier deine echten Daten eintragen)
 // ─────────────────────────────────────────────
-const SUPABASE_URL = 'https://jngjuoxiuacchptqynec.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuZ2p1b3hpdWFjY2hwdHF5bmVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNDg2OTcsImV4cCI6MjA5MzYyNDY5N30.Hc37ETOrpY_C6sPpkyobSyKkMmb_ib-m0XrKaDqSFx8';
-  
+const SUPABASE_URL = 'DEINE_SUPABASE_URL';
+const SUPABASE_KEY = 'DEIN_SUPABASE_ANON_KEY';
+
 // ─────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────
@@ -1019,20 +1036,23 @@ let realtimeSub = null;
 let timerInterval = null;
 let sliderValue = 1;
 
-// Slider: map 0-500 range to CHF values non-linearly
-function sliderToCHF(v) {
-  v = parseInt(v);
-  if (v <= 100) return v * 1;      // 0–100 CHF (1:1)
-  if (v <= 300) return 100 + (v - 100) * 2; // 100–500 CHF
-  return 500 + (v - 300) * 5;     // 500–1500 CHF
+// Slider: linear 0–100 CHF
+function updateSliderVal(v) {
+  sliderValue = parseFloat(parseFloat(v).toFixed(2));
+  document.getElementById('slider-val-display').textContent = sliderValue.toFixed(2);
+  document.getElementById('trade-value-manual').value = sliderValue.toFixed(2);
 }
 
-function updateSliderVal(v) {
-  sliderValue = sliderToCHF(v);
-  document.getElementById('slider-val-display').textContent = sliderValue.toFixed(2);
+function syncFromManual(v) {
+  const val = parseFloat(v) || 0;
+  sliderValue = val;
+  document.getElementById('slider-val-display').textContent = val.toFixed(2);
+  // Clamp slider to 0-100 range for display
+  document.getElementById('trade-value-slider').value = Math.min(val, 100);
 }
 
 window.updateSliderVal = updateSliderVal;
+window.syncFromManual = syncFromManual;
 
 async function init() {
   const saved = localStorage.getItem('tauschspiel_user');
@@ -1268,6 +1288,7 @@ async function saveTrade() {
   document.getElementById('trade-emoji').value = '';
   document.getElementById('trade-note').value = '';
   document.getElementById('trade-value-slider').value = 1;
+  document.getElementById('trade-value-manual').value = '1.00';
   updateSliderVal(1);
   btn.disabled = false; btn.textContent = '🔄 Tausch speichern!';
 
@@ -1597,6 +1618,18 @@ function confetti() {
   }
 }
 
+function doSwitchTeam() {
+  if (!confirm('Team wechseln? Dein Fortschritt bleibt gespeichert — du kannst dich jederzeit wieder einloggen.')) return;
+  localStorage.removeItem('tauschspiel_user');
+  currentUser = null;
+  if (realtimeSub) sb.removeChannel(realtimeSub);
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('login-team').value = '';
+  document.getElementById('login-pw').value = '';
+}
+
+window.doSwitchTeam = doSwitchTeam;
 window.doLogin = doLogin;
 window.doLogout = doLogout;
 
