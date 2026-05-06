@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tauschspiel Langenthal 🔄</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --border: #2a2a3a;
+    --accent: #f0e040;
+    --accent2: #40e0f0;
+    --accent3: #f04080;
+    --text: #f0f0f8;
+    --muted: #7070a0;
+    --gold: #ffd700;
+    --silver: #c0c0c0;
+    --bronze: #cd7f32;
+    --green: #40e080;
+    --radius: 12px;
+    --nav-h: 64px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 10%, rgba(240,224,64,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 30% at 80% 80%, rgba(64,224,240,0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── AUTH ── */
+  #auth-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    position: relative;
+    z-index: 1;
+  }
+  .auth-box {
+    width: 100%;
+    max-width: 420px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .auth-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+  }
+  .auth-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    letter-spacing: 2px;
+    text-align: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .auth-sub {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 32px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--accent);
+  }
+  .form-group select option { background: var(--surface2); }
+  .form-group textarea { resize: none; min-height: 80px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 24px;
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    text-decoration: none;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    width: 100%;
+  }
+  .btn-primary:hover { background: #fff7a0; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger {
+    background: rgba(240,64,128,0.15);
+    color: var(--accent3);
+    border: 1px solid rgba(240,64,128,0.3);
+  }
+  .btn-danger:hover { background: rgba(240,64,128,0.25); }
+  .btn-sm { padding: 8px 14px; font-size: 13px; }
+  .btn-icon { padding: 8px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: all .2s; }
+  .btn-icon:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ── LAYOUT ── */
+  #app { display: none; min-height: 100vh; position: relative; z-index: 1; }
+
+  /* Desktop sidebar */
+  .sidebar {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 220px;
+    height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    flex-direction: column;
+    padding: 0;
+    z-index: 100;
+  }
+  .sidebar-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 2px;
+    padding: 24px 20px 16px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo span { display: block; font-family: 'DM Sans', sans-serif; font-size: 11px; color: var(--muted); -webkit-text-fill-color: var(--muted); font-weight: 500; letter-spacing: 1px; margin-top: -4px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    transition: all .2s;
+    border-left: 3px solid transparent;
+    margin: 2px 0;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(240,224,64,0.06); }
+  .nav-item .icon { font-size: 18px; width: 24px; text-align: center; }
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+  }
+  .user-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: #000; font-size: 13px;
+    flex-shrink: 0;
+  }
+  .user-name { font-size: 13px; font-weight: 600; }
+  .user-team { font-size: 11px; color: var(--muted); }
+
+  /* Mobile bottom nav */
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 0 4px;
+    z-index: 100;
+    overflow-x: auto;
+    scrollbar-width: none;
+    height: var(--nav-h);
+  }
+  .mobile-nav::-webkit-scrollbar { display: none; }
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    transition: color .2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 60px;
+    letter-spacing: .3px;
+  }
+  .mobile-nav-item .icon { font-size: 20px; }
+  .mobile-nav-item.active { color: var(--accent); }
+
+  .main-content {
+    padding: 20px 16px calc(var(--nav-h) + 20px);
+  }
+
+  @media (min-width: 768px) {
+    .sidebar { display: flex; }
+    .mobile-nav { display: none; }
+    .main-content {
+      margin-left: 220px;
+      padding: 32px;
+    }
+  }
+
+  /* ── PAGES ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .page-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .page-sub {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* ── LEADERBOARD ── */
+  .rank-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .rank-card:hover { border-color: var(--border); transform: translateX(3px); }
+  .rank-card.rank-1 { border-color: rgba(255,215,0,0.4); background: linear-gradient(135deg, rgba(255,215,0,0.08), var(--surface)); }
+  .rank-card.rank-2 { border-color: rgba(192,192,192,0.3); background: linear-gradient(135deg, rgba(192,192,192,0.05), var(--surface)); }
+  .rank-card.rank-3 { border-color: rgba(205,127,50,0.3); background: linear-gradient(135deg, rgba(205,127,50,0.05), var(--surface)); }
+  .rank-card.is-my-team { border-color: rgba(240,224,64,0.4); box-shadow: 0 0 20px rgba(240,224,64,0.07); }
+  .rank-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    min-width: 36px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .rank-1 .rank-num { color: var(--gold); }
+  .rank-2 .rank-num { color: var(--silver); }
+  .rank-3 .rank-num { color: var(--bronze); }
+  .rank-medal { font-size: 22px; min-width: 28px; text-align: center; }
+  .rank-info { flex: 1; min-width: 0; }
+  .rank-team-name {
+    font-weight: 700;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rank-item-name {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rank-value-wrap { text-align: right; }
+  .rank-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--green);
+  }
+  .rank-value.zero { color: var(--muted); }
+  .rank-trades {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .trade-bonus-tag {
+    display: inline-block;
+    background: rgba(240,224,64,0.15);
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 20px;
+    letter-spacing: .5px;
+  }
+
+  /* ── TIMER ── */
+  .timer-hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 24px;
+    text-align: center;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .timer-hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent3), var(--accent), var(--accent2));
+  }
+  .timer-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .timer-display {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    line-height: 1;
+    transition: color .3s;
+  }
+  .timer-display.warning { color: var(--accent3); animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+  .timer-status { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .timer-controls { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
+
+  /* ── MY TEAM ── */
+  .current-item-card {
+    background: linear-gradient(135deg, rgba(64,224,128,0.08), var(--surface));
+    border: 1px solid rgba(64,224,128,0.2);
+    border-radius: 20px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .item-emoji { font-size: 64px; margin-bottom: 8px; display: block; }
+  .item-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 1px;
+    color: var(--text);
+  }
+  .item-value-big {
+    font-family: 'DM Mono', monospace;
+    font-size: 40px;
+    color: var(--green);
+    margin: 4px 0;
+  }
+  .item-trades-count {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* ── TRADE LOG ── */
+  .trade-entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .trade-arrow { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+  .trade-info { flex: 1; min-width: 0; }
+  .trade-items { font-size: 14px; font-weight: 600; }
+  .trade-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .trade-val-change { text-align: right; white-space: nowrap; }
+  .trade-val-plus { color: var(--green); font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 600; }
+  .trade-val-minus { color: var(--accent3); font-family: 'DM Mono', monospace; font-size: 14px; }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 20px;
+  }
+  .tab {
+    flex: 1;
+    padding: 9px 12px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    text-align: center;
+  }
+  .tab.active { background: var(--accent); color: #000; }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .5px;
+  }
+  .badge-green { background: rgba(64,224,128,0.15); color: var(--green); }
+  .badge-yellow { background: rgba(240,224,64,0.15); color: var(--accent); }
+  .badge-blue { background: rgba(64,224,240,0.15); color: var(--accent2); }
+  .badge-red { background: rgba(240,64,128,0.15); color: var(--accent3); }
+
+  /* ── STAT GRID ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+    font-weight: 600;
+  }
+
+  /* ── ADMIN ── */
+  .team-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+  }
+  .team-row-name { flex: 1; font-weight: 600; }
+  .team-row-code { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: calc(var(--nav-h) + 16px);
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    transition: all .3s;
+    pointer-events: none;
+    z-index: 999;
+    white-space: nowrap;
+    max-width: 90vw;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.toast-good { border-color: rgba(64,224,128,0.4); color: var(--green); }
+  #toast.toast-bad { border-color: rgba(240,64,128,0.4); color: var(--accent3); }
+
+  @media (min-width: 768px) {
+    #toast { bottom: 24px; }
+  }
+
+  /* ── LOADING ── */
+  #loading-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    gap: 16px;
+  }
+  .loading-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  .loading-dots { display: flex; gap: 8px; }
+  .loading-dots span {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: bounce 1.2s ease-in-out infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: .2s; background: var(--accent2); }
+  .loading-dots span:nth-child(3) { animation-delay: .4s; background: var(--accent3); }
+  @keyframes bounce { 0%,80%,100% { transform: scale(0.8); opacity: .5; } 40% { transform: scale(1); opacity: 1; } }
+
+  /* ── LIVE TICKER ── */
+  .live-ticker {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    position: relative;
+  }
+  .ticker-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent3);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ticker-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent3);
+    animation: pulse 1s ease-in-out infinite;
+  }
+  .ticker-text { font-size: 13px; color: var(--muted); }
+
+  /* ── NEW TRADE FORM ── */
+  .value-slider-wrap { margin-top: 8px; }
+  .value-slider {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    outline: none;
+    margin: 10px 0;
+  }
+  .value-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    transition: transform .2s;
+  }
+  .value-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+  .slider-val {
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 28px;
+    color: var(--green);
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  /* ── CONFETTI ── */
+  .confetti-piece {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 9999;
+    animation: confettiFall linear forwards;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* ── MISC ── */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; display: block; }
+  .empty-state p { font-size: 14px; }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .row > * { flex: 1; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: .5px;
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="loading-logo">TAUSCH<br>SPIEL</div>
+  <div class="loading-dots"><span></span><span></span><span></span></div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- AUTH -->
+<div id="auth-screen" style="display:none">
+  <div class="auth-box">
+    <div class="auth-logo">TAUSCH<br>SPIEL</div>
+    <div class="auth-sub">📍 Langenthal · Teenie Programm</div>
+    <div class="form-group">
+      <label>Team-Name</label>
+      <input type="text" id="login-team" placeholder="z.B. Team Adler" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>Passwort</label>
+      <input type="password" id="login-pw" placeholder="••••••">
+    </div>
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()">
+      🚀 Loslegen
+    </button>
+    <div style="margin-top:16px;text-align:center;font-size:13px;color:var(--muted)">
+      Noch kein Team? Sprich die Spielleitung an!
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- Sidebar (Desktop) -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">TAUSCH<br>SPIEL <span>LANGENTHAL</span></div>
+    <div class="sidebar-nav">
+      <div class="nav-item active" onclick="showPage('home')" id="snav-home">
+        <span class="icon">🏠</span> Start
+      </div>
+      <div class="nav-item" onclick="showPage('ranking')" id="snav-ranking">
+        <span class="icon">🏆</span> Rangliste
+      </div>
+      <div class="nav-item" onclick="showPage('trade')" id="snav-trade">
+        <span class="icon">🔄</span> Tausch erfassen
+      </div>
+      <div class="nav-item" onclick="showPage('myteam')" id="snav-myteam">
+        <span class="icon">👥</span> Mein Team
+      </div>
+      <div class="nav-item" onclick="showPage('map')" id="snav-map">
+        <span class="icon">🗺️</span> Live-Karte
+      </div>
+      <div class="nav-item" id="snav-admin" onclick="showPage('admin')" style="display:none">
+        <span class="icon">⚙️</span> Admin
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-badge">
+        <div class="user-avatar" id="sidebar-avatar">T</div>
+        <div>
+          <div class="user-name" id="sidebar-teamname">–</div>
+          <div class="user-team" id="sidebar-value">CHF 0.00</div>
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm" style="width:100%" onclick="doLogout()">Abmelden</button>
+    </div>
+  </nav>
+
+  <!-- Mobile nav -->
+  <nav class="mobile-nav">
+    <div class="mobile-nav-item active" onclick="showPage('home')" id="mnav-home">
+      <span class="icon">🏠</span>Start
+    </div>
+    <div class="mobile-nav-item" onclick="showPage('ranking')" id="mnav-ranking">
+      <span class="icon">🏆</span>Rangliste
+    </div>
+    <div class="mobile-nav-item" onclick="showPage('trade')" id="mnav-trade">
+      <span class="icon">🔄</span>Tausch
+    </div>
+    <div class="mobile-nav-item" onclick="showPage('myteam')" id="mnav-myteam">
+      <span class="icon">👥</span>Mein Team
+    </div>
+    <div class="mobile-nav-item" onclick="showPage('map')" id="mnav-map">
+      <span class="icon">🗺️</span>Karte
+    </div>
+    <div class="mobile-nav-item" id="mnav-admin" onclick="showPage('admin')" style="display:none">
+      <span class="icon">⚙️</span>Admin
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main-content">
+
+    <!-- HOME PAGE -->
+    <div class="page active" id="page-home">
+      <div class="page-title">HEY, TEAM! 👋</div>
+      <div class="page-sub" id="home-teamname">Willkommen beim Tauschspiel</div>
+
+      <!-- Timer -->
+      <div class="timer-hero">
+        <div class="timer-label">⏱ Spielzeit</div>
+        <div class="timer-display" id="timer-display">--:--</div>
+        <div class="timer-status" id="timer-status">Warte auf Start...</div>
+        <div id="admin-timer-controls" style="display:none">
+          <div class="timer-controls">
+            <button class="btn btn-secondary btn-sm" onclick="adminSetTimer(120)">2h starten</button>
+            <button class="btn btn-secondary btn-sm" onclick="adminSetTimer(90)">1.5h starten</button>
+            <button class="btn btn-danger btn-sm" onclick="adminStopTimer()">Stoppen</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Ticker -->
+      <div class="live-ticker">
+        <div class="ticker-label"><span class="ticker-dot"></span>Live Updates</div>
+        <div class="ticker-text" id="live-ticker-text">Lade aktuelle Infos...</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-val" id="home-stat-val" style="color:var(--green)">–</div>
+          <div class="stat-label">Mein Wert</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="home-stat-trades" style="color:var(--accent2)">–</div>
+          <div class="stat-label">Tausche</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="home-stat-rank" style="color:var(--accent)">–</div>
+          <div class="stat-label">Mein Rang</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="home-stat-teams" style="color:var(--accent3)">–</div>
+          <div class="stat-label">Teams total</div>
+        </div>
+      </div>
+
+      <!-- Quick tip -->
+      <div class="card">
+        <div class="card-title">💡 Spielregeln</div>
+        <div style="font-size:14px;line-height:1.7;color:var(--muted)">
+          Ihr startet mit einer 📎 <strong style="color:var(--text)">Büroklammer</strong> (CHF 0.10) und habt <strong style="color:var(--text)">2 Stunden</strong> Zeit, in Langenthal zu tauschen.<br><br>
+          Jeder Tausch gibt euch <strong style="color:var(--accent)">+CHF 1.00 Tausch-Bonus</strong> extra!<br><br>
+          Gewinnt das Team mit dem höchsten <strong style="color:var(--green)">Gesamtwert</strong> am Ende. 🏆
+        </div>
+      </div>
+    </div>
+
+    <!-- RANKING PAGE -->
+    <div class="page" id="page-ranking">
+      <div class="page-title">🏆 RANGLISTE</div>
+      <div class="page-sub">Live · aktualisiert automatisch</div>
+      <div id="ranking-list">
+        <div class="empty-state"><span class="icon">⏳</span><p>Laden...</p></div>
+      </div>
+    </div>
+
+    <!-- TRADE PAGE -->
+    <div class="page" id="page-trade">
+      <div class="page-title">🔄 TAUSCH ERFASSEN</div>
+      <div class="page-sub">Was habt ihr gegen was getauscht?</div>
+
+      <div class="card" id="trade-form-card">
+        <div class="card-title">Vorheriger Gegenstand</div>
+        <div class="form-group">
+          <label>Was habt ihr weggegeben?</label>
+          <input type="text" id="trade-from" placeholder="z.B. Büroklammer" autocomplete="off">
+        </div>
+
+        <div style="text-align:center;font-size:28px;margin:4px 0;">⬇️</div>
+
+        <div class="card-title">Neuer Gegenstand</div>
+        <div class="form-group">
+          <label>Was habt ihr bekommen?</label>
+          <input type="text" id="trade-to" placeholder="z.B. Kugelschreiber" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label>Emoji (optional)</label>
+          <input type="text" id="trade-emoji" placeholder="z.B. 🖊️" maxlength="4" style="font-size:24px;text-align:center">
+        </div>
+
+        <div class="form-group">
+          <label>Geschätzter Wert des neuen Gegenstands (CHF)</label>
+          <div class="value-slider-wrap">
+            <div class="slider-val" id="slider-val-display">1.00</div>
+            <input type="range" class="value-slider" id="trade-value-slider" min="0" max="500" step="1" value="1" oninput="updateSliderVal(this.value)">
+            <div class="slider-labels"><span>CHF 0</span><span>CHF 50</span><span>CHF 100</span><span>CHF 500+</span></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Beschreibung / Notiz</label>
+          <textarea id="trade-note" placeholder="Optional: Wie war der Tausch? Bei wem?"></textarea>
+        </div>
+
+        <div style="background:rgba(240,224,64,0.08);border:1px solid rgba(240,224,64,0.2);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;">
+          <strong style="color:var(--accent)">+CHF 1.00 Tausch-Bonus</strong> wird automatisch dazugezählt! 🎉
+        </div>
+
+        <button class="btn btn-primary" id="save-trade-btn" onclick="saveTrade()">
+          🔄 Tausch speichern!
+        </button>
+      </div>
+    </div>
+
+    <!-- MY TEAM PAGE -->
+    <div class="page" id="page-myteam">
+      <div class="page-title">👥 MEIN TEAM</div>
+      <div class="page-sub" id="myteam-name">–</div>
+
+      <div class="current-item-card">
+        <span class="item-emoji" id="myteam-emoji">📎</span>
+        <div class="item-name" id="myteam-item">Büroklammer</div>
+        <div class="item-value-big" id="myteam-value">CHF 0.10</div>
+        <div class="item-trades-count" id="myteam-trades">0 Tausche · 0 Tausch-Bonus</div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">📜 TAUSCH-VERLAUF</div>
+      </div>
+      <div id="myteam-trade-log">
+        <div class="empty-state"><span class="icon">🔄</span><p>Noch keine Tausche erfasst.</p></div>
+      </div>
+    </div>
+
+    <!-- MAP PAGE -->
+    <div class="page" id="page-map">
+      <div class="page-title">🗺️ LIVE-KARTE</div>
+      <div class="page-sub">Wo wurde zuletzt getauscht?</div>
+
+      <div class="card">
+        <div class="card-title">Letzte Tausche in Langenthal</div>
+        <div id="map-list">
+          <div class="empty-state"><span class="icon">📍</span><p>Keine Daten</p></div>
+        </div>
+      </div>
+
+      <div class="card" style="border-color:rgba(64,224,240,0.2)">
+        <div class="card-title">📊 Statistiken</div>
+        <div id="map-stats" style="font-size:13px;color:var(--muted);line-height:2">Laden...</div>
+      </div>
+    </div>
+
+    <!-- ADMIN PAGE -->
+    <div class="page" id="page-admin">
+      <div class="page-title">⚙️ ADMIN</div>
+      <div class="page-sub">Spielleitung</div>
+
+      <div class="tabs">
+        <button class="tab active" onclick="switchAdminTab('teams')">Teams</button>
+        <button class="tab" onclick="switchAdminTab('neues-team')">+ Team</button>
+        <button class="tab" onclick="switchAdminTab('reset')">Reset</button>
+      </div>
+
+      <!-- Teams Tab -->
+      <div id="admin-tab-teams">
+        <div class="section-header">
+          <div class="section-title">ALLE TEAMS</div>
+          <button class="btn btn-secondary btn-sm" onclick="loadAdminTeams()">🔄</button>
+        </div>
+        <div id="admin-teams-list">Laden...</div>
+      </div>
+
+      <!-- Neues Team Tab -->
+      <div id="admin-tab-neues-team" style="display:none">
+        <div class="card">
+          <div class="card-title">Neues Team erstellen</div>
+          <div class="form-group">
+            <label>Team-Name</label>
+            <input type="text" id="new-team-name" placeholder="z.B. Team Adler">
+          </div>
+          <div class="form-group">
+            <label>Passwort</label>
+            <input type="text" id="new-team-pw" placeholder="Einfaches Passwort">
+          </div>
+          <button class="btn btn-primary" onclick="createTeam()">✅ Team erstellen</button>
+        </div>
+      </div>
+
+      <!-- Reset Tab -->
+      <div id="admin-tab-reset" style="display:none">
+        <div class="card" style="border-color:rgba(240,64,128,0.3)">
+          <div class="card-title" style="color:var(--accent3)">⚠️ Gefährliche Zone</div>
+          <p style="font-size:14px;color:var(--muted);margin-bottom:16px">Alle Tausche löschen und alle Teams auf Büroklammer zurücksetzen.</p>
+          <button class="btn btn-danger" onclick="adminResetGame()">🗑️ Spiel zurücksetzen</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+</div><!-- /app -->
+
+<script>
+// ─────────────────────────────────────────────
+// CONFIG — SUPABASE (hier deine echten Daten eintragen)
+// ─────────────────────────────────────────────
+const SUPABASE_URL = 'DEINE_SUPABASE_URL';
+const SUPABASE_KEY = 'DEIN_SUPABASE_ANON_KEY';
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentUser = null;
+let realtimeSub = null;
+let timerInterval = null;
+let sliderValue = 1;
+
+// Slider: map 0-500 range to CHF values non-linearly
+function sliderToCHF(v) {
+  v = parseInt(v);
+  if (v <= 100) return v * 1;      // 0–100 CHF (1:1)
+  if (v <= 300) return 100 + (v - 100) * 2; // 100–500 CHF
+  return 500 + (v - 300) * 5;     // 500–1500 CHF
+}
+
+function updateSliderVal(v) {
+  sliderValue = sliderToCHF(v);
+  document.getElementById('slider-val-display').textContent = sliderValue.toFixed(2);
+}
+
+window.updateSliderVal = updateSliderVal;
+
+async function init() {
+  const saved = localStorage.getItem('tauschspiel_user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      await startApp();
+    } catch(e) {
+      showAuth();
+    }
+  } else {
+    showAuth();
+  }
+}
+
+function showAuth() {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+async function doLogin() {
+  const team = document.getElementById('login-team').value.trim();
+  const pw = document.getElementById('login-pw').value.trim();
+  if (!team || !pw) { toast('Bitte alles ausfüllen!', 'bad'); return; }
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = '⏳ Prüfen...';
+
+  const { data, error } = await sb.from('teams').select('*').ilike('name', team).single();
+
+  btn.disabled = false; btn.textContent = '🚀 Loslegen';
+
+  if (error || !data) { toast('Team nicht gefunden!', 'bad'); return; }
+  if (data.password !== btoa(pw)) { toast('Falsches Passwort!', 'bad'); return; }
+
+  currentUser = data;
+  localStorage.setItem('tauschspiel_user', JSON.stringify(data));
+  await startApp();
+}
+
+function doLogout() {
+  localStorage.removeItem('tauschspiel_user');
+  currentUser = null;
+  if (realtimeSub) sb.removeChannel(realtimeSub);
+  location.reload();
+}
+
+async function startApp() {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  // Admin check
+  if (currentUser.is_admin) {
+    document.getElementById('snav-admin').style.display = 'flex';
+    document.getElementById('mnav-admin').style.display = 'flex';
+    document.getElementById('admin-timer-controls').style.display = 'block';
+  }
+
+  updateSidebar();
+  showPage('home');
+  subscribeRealtime();
+  startTimerCheck();
+}
+
+function updateSidebar() {
+  if (!currentUser) return;
+  const initials = currentUser.name.substring(0,2).toUpperCase();
+  document.getElementById('sidebar-avatar').textContent = initials;
+  document.getElementById('sidebar-teamname').textContent = currentUser.name;
+  document.getElementById('home-teamname').textContent = 'Hey, ' + currentUser.name + '!';
+  document.getElementById('myteam-name').textContent = currentUser.name;
+  refreshTeamData();
+}
+
+// ─────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────
+const PAGE_IDS = ['home','ranking','trade','myteam','map','admin'];
+
+function showPage(id) {
+  PAGE_IDS.forEach(p => {
+    document.getElementById('page-' + p).classList.toggle('active', p === id);
+    const s = document.getElementById('snav-' + p);
+    const m = document.getElementById('mnav-' + p);
+    if (s) s.classList.toggle('active', p === id);
+    if (m) m.classList.toggle('active', p === id);
+  });
+  if (id === 'ranking') loadRanking();
+  if (id === 'myteam') loadMyTeam();
+  if (id === 'map') loadMap();
+  if (id === 'admin') loadAdminTeams();
+  if (id === 'trade') prefillTradeFrom();
+}
+
+window.showPage = showPage;
+
+// ─────────────────────────────────────────────
+// TEAM DATA
+// ─────────────────────────────────────────────
+async function refreshTeamData() {
+  if (!currentUser) return;
+  const { data } = await sb.from('teams').select('*').eq('id', currentUser.id).single();
+  if (!data) return;
+  // merge into currentUser (keep password etc.)
+  currentUser = { ...currentUser, ...data };
+  localStorage.setItem('tauschspiel_user', JSON.stringify(currentUser));
+
+  const trades = currentUser.trade_count || 0;
+  const itemVal = currentUser.current_value || 0.10;
+  const bonus = trades * 1.0;
+  const total = itemVal + bonus;
+
+  document.getElementById('sidebar-value').textContent = 'CHF ' + total.toFixed(2);
+  document.getElementById('home-stat-val').textContent = 'CHF ' + total.toFixed(2);
+  document.getElementById('home-stat-trades').textContent = trades;
+}
+
+// ─────────────────────────────────────────────
+// RANKING
+// ─────────────────────────────────────────────
+async function loadRanking() {
+  const el = document.getElementById('ranking-list');
+  const { data: teams, error } = await sb.from('teams')
+    .select('*')
+    .eq('is_admin', false)
+    .order('current_value', { ascending: false });
+
+  if (error || !teams) { el.innerHTML = '<div class="empty-state"><span class="icon">❌</span><p>Fehler beim Laden</p></div>'; return; }
+
+  // Sort by total (value + bonus)
+  const sorted = teams.map(t => ({
+    ...t,
+    bonus: (t.trade_count || 0) * 1.0,
+    total: (t.current_value || 0.10) + (t.trade_count || 0) * 1.0
+  })).sort((a, b) => b.total - a.total);
+
+  const medals = ['🥇','🥈','🥉'];
+
+  let html = '';
+  sorted.forEach((t, i) => {
+    const rank = i + 1;
+    const isMe = t.id === currentUser.id;
+    const rankClass = rank <= 3 ? 'rank-' + rank : '';
+    const myClass = isMe ? 'is-my-team' : '';
+    const medal = medals[i] || '';
+    const valClass = t.total <= 0.10 ? 'zero' : '';
+
+    html += `
+      <div class="rank-card ${rankClass} ${myClass}">
+        <div class="rank-num">${rank}</div>
+        <div class="rank-medal">${medal || ''}</div>
+        <div class="rank-info">
+          <div class="rank-team-name">
+            ${escHtml(t.name)}
+            ${isMe ? '<span class="badge badge-yellow">Ihr</span>' : ''}
+          </div>
+          <div class="rank-item-name">
+            ${t.current_emoji || ''} ${escHtml(t.current_item || 'Büroklammer')}
+          </div>
+          <div style="margin-top:4px">
+            <span class="badge badge-blue">×${t.trade_count || 0} Tausche</span>
+            ${(t.trade_count||0) > 0 ? `<span class="trade-bonus-tag" style="margin-left:4px">+${(t.trade_count*1).toFixed(2)} Bonus</span>` : ''}
+          </div>
+        </div>
+        <div class="rank-value-wrap">
+          <div class="rank-value ${valClass}">CHF ${t.total.toFixed(2)}</div>
+          <div class="rank-trades">Wert: ${t.current_value?.toFixed(2) || '0.10'}</div>
+        </div>
+      </div>`;
+  });
+
+  // Update home stats
+  const myRank = sorted.findIndex(t => t.id === currentUser.id) + 1;
+  document.getElementById('home-stat-rank').textContent = '#' + (myRank || '–');
+  document.getElementById('home-stat-teams').textContent = sorted.length;
+
+  el.innerHTML = html || '<div class="empty-state"><span class="icon">🏆</span><p>Noch keine Teams</p></div>';
+}
+
+// ─────────────────────────────────────────────
+// TRADE FORM
+// ─────────────────────────────────────────────
+function prefillTradeFrom() {
+  const fromEl = document.getElementById('trade-from');
+  if (currentUser.current_item) {
+    fromEl.value = currentUser.current_item;
+  }
+}
+
+async function saveTrade() {
+  const fromItem = document.getElementById('trade-from').value.trim();
+  const toItem = document.getElementById('trade-to').value.trim();
+  const emoji = document.getElementById('trade-emoji').value.trim() || '📦';
+  const note = document.getElementById('trade-note').value.trim();
+
+  if (!fromItem || !toItem) { toast('Bitte beide Gegenstände eintragen!', 'bad'); return; }
+
+  const btn = document.getElementById('save-trade-btn');
+  btn.disabled = true; btn.textContent = '⏳ Speichern...';
+
+  const newVal = sliderValue;
+  const newCount = (currentUser.trade_count || 0) + 1;
+  const totalNew = newVal + newCount * 1.0;
+
+  // Save trade log
+  const { error: e1 } = await sb.from('trades').insert({
+    team_id: currentUser.id,
+    team_name: currentUser.name,
+    from_item: fromItem,
+    to_item: toItem,
+    to_emoji: emoji,
+    to_value: newVal,
+    note: note,
+    trade_number: newCount
+  });
+
+  if (e1) { toast(e1.message, 'bad'); btn.disabled = false; btn.textContent = '🔄 Tausch speichern!'; return; }
+
+  // Update team
+  const { error: e2 } = await sb.from('teams').update({
+    current_item: toItem,
+    current_emoji: emoji,
+    current_value: newVal,
+    trade_count: newCount
+  }).eq('id', currentUser.id);
+
+  if (e2) { toast(e2.message, 'bad'); btn.disabled = false; btn.textContent = '🔄 Tausch speichern!'; return; }
+
+  // Reset form
+  document.getElementById('trade-from').value = '';
+  document.getElementById('trade-to').value = '';
+  document.getElementById('trade-emoji').value = '';
+  document.getElementById('trade-note').value = '';
+  document.getElementById('trade-value-slider').value = 1;
+  updateSliderVal(1);
+  btn.disabled = false; btn.textContent = '🔄 Tausch speichern!';
+
+  currentUser.trade_count = newCount;
+  currentUser.current_item = toItem;
+  currentUser.current_emoji = emoji;
+  currentUser.current_value = newVal;
+  localStorage.setItem('tauschspiel_user', JSON.stringify(currentUser));
+
+  toast(`+CHF ${totalNew.toFixed(2)} Gesamtwert! 🎉`, 'good');
+  confetti();
+  refreshTeamData();
+  showPage('myteam');
+}
+
+window.saveTrade = saveTrade;
+
+// ─────────────────────────────────────────────
+// MY TEAM
+// ─────────────────────────────────────────────
+async function loadMyTeam() {
+  await refreshTeamData();
+
+  const trades = currentUser.trade_count || 0;
+  const itemVal = currentUser.current_value || 0.10;
+  const bonus = trades * 1.0;
+  const total = itemVal + bonus;
+
+  document.getElementById('myteam-emoji').textContent = currentUser.current_emoji || '📎';
+  document.getElementById('myteam-item').textContent = currentUser.current_item || 'Büroklammer';
+  document.getElementById('myteam-value').textContent = 'CHF ' + total.toFixed(2);
+  document.getElementById('myteam-trades').textContent =
+    trades + ' Tausche · +CHF ' + bonus.toFixed(2) + ' Tausch-Bonus';
+
+  // Load trade log
+  const { data: tradeLog } = await sb.from('trades')
+    .select('*')
+    .eq('team_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  const logEl = document.getElementById('myteam-trade-log');
+  if (!tradeLog || tradeLog.length === 0) {
+    logEl.innerHTML = '<div class="empty-state"><span class="icon">🔄</span><p>Noch keine Tausche erfasst.</p></div>';
+    return;
+  }
+
+  let html = '';
+  tradeLog.forEach(t => {
+    const d = new Date(t.created_at);
+    const time = d.toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' });
+    html += `
+      <div class="trade-entry">
+        <div class="trade-arrow">🔄</div>
+        <div class="trade-info">
+          <div class="trade-items">
+            <span style="color:var(--muted)">${escHtml(t.from_item)}</span>
+            <span style="margin:0 6px">→</span>
+            <span>${t.to_emoji||''} ${escHtml(t.to_item)}</span>
+          </div>
+          <div class="trade-meta">Tausch #${t.trade_number} · ${time}${t.note ? ' · ' + escHtml(t.note) : ''}</div>
+        </div>
+        <div class="trade-val-change">
+          <div class="trade-val-plus">CHF ${(parseFloat(t.to_value)||0).toFixed(2)}</div>
+          <div style="font-size:11px;color:var(--muted)">+1.00 Bonus</div>
+        </div>
+      </div>`;
+  });
+
+  logEl.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────
+// MAP / STATS
+// ─────────────────────────────────────────────
+async function loadMap() {
+  const { data: trades } = await sb.from('trades')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  const el = document.getElementById('map-list');
+  if (!trades || trades.length === 0) {
+    el.innerHTML = '<div class="empty-state"><span class="icon">📍</span><p>Noch keine Tausche</p></div>';
+  } else {
+    let html = '';
+    trades.forEach(t => {
+      const d = new Date(t.created_at);
+      const time = d.toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' });
+      html += `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:24px">${t.to_emoji||'📦'}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">${escHtml(t.team_name)} hat getauscht</div>
+            <div style="font-size:12px;color:var(--muted)">${escHtml(t.from_item)} → ${escHtml(t.to_item)} · ${time}</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--green)">CHF ${(t.to_value||0).toFixed(2)}</div>
+        </div>`;
+    });
+    el.innerHTML = html;
+  }
+
+  // Stats
+  const { data: allTrades } = await sb.from('trades').select('to_value');
+  const { data: allTeams } = await sb.from('teams').select('trade_count').eq('is_admin', false);
+
+  const totalTrades = allTrades?.length || 0;
+  const totalTeams = allTeams?.length || 0;
+  const highestVal = allTrades?.reduce((max, t) => Math.max(max, t.to_value||0), 0) || 0;
+
+  document.getElementById('map-stats').innerHTML = `
+    <div>🔄 Tausche total: <strong style="color:var(--text)">${totalTrades}</strong></div>
+    <div>👥 Teams aktiv: <strong style="color:var(--text)">${totalTeams}</strong></div>
+    <div>💎 Höchster Einzelwert: <strong style="color:var(--green)">CHF ${highestVal.toFixed(2)}</strong></div>
+  `;
+}
+
+// ─────────────────────────────────────────────
+// ADMIN
+// ─────────────────────────────────────────────
+async function loadAdminTeams() {
+  if (!currentUser?.is_admin) return;
+  const el = document.getElementById('admin-teams-list');
+  const { data: teams } = await sb.from('teams').select('*').order('name');
+  if (!teams) { el.innerHTML = 'Fehler'; return; }
+
+  window._adminTeams = teams;
+
+  let html = '';
+  teams.forEach(t => {
+    html += `
+      <div class="team-row">
+        <div class="user-avatar" style="width:28px;height:28px;font-size:11px">${t.name.substring(0,2).toUpperCase()}</div>
+        <div class="team-row-name">${escHtml(t.name)} ${t.is_admin ? '👑' : ''}</div>
+        <div class="team-row-code">×${t.trade_count||0} | CHF ${((t.current_value||0.10)+(t.trade_count||0)).toFixed(2)}</div>
+        ${!t.is_admin ? `<button class="btn-icon btn-sm" onclick="deleteTeam('${t.id}')">🗑️</button>` : ''}
+      </div>`;
+  });
+  el.innerHTML = html || '<p style="color:var(--muted);font-size:14px">Keine Teams</p>';
+}
+
+async function createTeam() {
+  const name = document.getElementById('new-team-name').value.trim();
+  const pw = document.getElementById('new-team-pw').value.trim();
+  if (!name || !pw) { toast('Bitte ausfüllen!', 'bad'); return; }
+
+  const { error } = await sb.from('teams').insert({
+    name, password: btoa(pw),
+    current_item: 'Büroklammer',
+    current_emoji: '📎',
+    current_value: 0.10,
+    trade_count: 0,
+    is_admin: false
+  });
+  if (error) { toast(error.message, 'bad'); return; }
+  document.getElementById('new-team-name').value = '';
+  document.getElementById('new-team-pw').value = '';
+  toast('Team "' + name + '" erstellt! 🎉', 'good');
+  switchAdminTab('teams');
+  loadAdminTeams();
+}
+
+async function deleteTeam(id) {
+  if (!confirm('Team wirklich löschen?')) return;
+  const { error } = await sb.from('teams').delete().eq('id', id);
+  if (error) { toast(error.message, 'bad'); return; }
+  toast('Team gelöscht', 'good');
+  loadAdminTeams();
+}
+
+async function adminResetGame() {
+  if (!confirm('ACHTUNG: Alle Tausche und Fortschritte werden gelöscht! Wirklich?')) return;
+  if (!confirm('Bist du sicher? Das kann nicht rückgängig gemacht werden!')) return;
+
+  await sb.from('trades').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  await sb.from('teams').update({
+    current_item: 'Büroklammer',
+    current_emoji: '📎',
+    current_value: 0.10,
+    trade_count: 0
+  }).eq('is_admin', false);
+  await sb.from('game_settings').update({ value: '' }).eq('key', 'timer_end');
+
+  toast('Spiel zurückgesetzt! 🔄', 'good');
+  loadAdminTeams();
+}
+
+function switchAdminTab(tab) {
+  ['teams','neues-team','reset'].forEach(t => {
+    document.getElementById('admin-tab-' + t).style.display = t === tab ? 'block' : 'none';
+    document.querySelectorAll('.tabs .tab').forEach((el, i) => {
+      const tabs = ['teams','neues-team','reset'];
+      el.classList.toggle('active', tabs[i] === tab);
+    });
+  });
+  if (tab === 'teams') loadAdminTeams();
+}
+
+window.switchAdminTab = switchAdminTab;
+
+async function adminSetTimer(minutes) {
+  const end = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+  const { error } = await sb.from('game_settings').upsert({ key: 'timer_end', value: end });
+  if (error) { toast(error.message, 'bad'); return; }
+  toast('Timer gestartet: ' + minutes + ' Minuten!', 'good');
+}
+
+async function adminStopTimer() {
+  await sb.from('game_settings').upsert({ key: 'timer_end', value: '' });
+  toast('Timer gestoppt', 'good');
+}
+
+window.adminSetTimer = adminSetTimer;
+window.adminStopTimer = adminStopTimer;
+window.createTeam = createTeam;
+window.deleteTeam = deleteTeam;
+window.adminResetGame = adminResetGame;
+window.loadAdminTeams = loadAdminTeams;
+
+// ─────────────────────────────────────────────
+// TIMER
+// ─────────────────────────────────────────────
+function startTimerCheck() {
+  checkTimer();
+  timerInterval = setInterval(checkTimer, 1000);
+}
+
+async function checkTimer() {
+  const { data } = await sb.from('game_settings').select('value').eq('key', 'timer_end').single();
+  const display = document.getElementById('timer-display');
+  const status = document.getElementById('timer-status');
+
+  if (!data?.value) {
+    display.textContent = '--:--';
+    status.textContent = 'Warte auf Start...';
+    display.classList.remove('warning');
+    return;
+  }
+
+  const end = new Date(data.value).getTime();
+  const now = Date.now();
+  const diff = end - now;
+
+  if (diff <= 0) {
+    display.textContent = '00:00';
+    display.classList.add('warning');
+    status.textContent = '⛔ Spiel beendet!';
+    return;
+  }
+
+  const mins = Math.floor(diff / 60000);
+  const secs = Math.floor((diff % 60000) / 1000);
+  display.textContent = String(mins).padStart(2,'0') + ':' + String(secs).padStart(2,'0');
+  status.textContent = '▶️ Spiel läuft!';
+
+  if (diff < 10 * 60 * 1000) {
+    display.classList.add('warning');
+    status.textContent = '⚠️ Weniger als 10 Minuten!';
+  } else {
+    display.classList.remove('warning');
+  }
+}
+
+// ─────────────────────────────────────────────
+// REALTIME
+// ─────────────────────────────────────────────
+function subscribeRealtime() {
+  realtimeSub = sb.channel('tauschspiel-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'trades' }, payload => {
+      if (payload.eventType === 'INSERT') {
+        const t = payload.new;
+        updateTicker(`${t.team_name} hat getauscht: ${t.to_emoji||''} ${t.to_item} (CHF ${(t.to_value||0).toFixed(2)})`);
+        // Refresh ranking if open
+        const rankPage = document.getElementById('page-ranking');
+        if (rankPage.classList.contains('active')) loadRanking();
+      }
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, () => {
+      const rankPage = document.getElementById('page-ranking');
+      if (rankPage.classList.contains('active')) loadRanking();
+      refreshTeamData();
+    })
+    .subscribe();
+}
+
+function updateTicker(msg) {
+  const el = document.getElementById('live-ticker-text');
+  el.style.opacity = '0';
+  setTimeout(() => {
+    el.textContent = msg;
+    el.style.opacity = '1';
+  }, 300);
+}
+
+// ─────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────
+function toast(msg, type = 'good') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show toast-' + type;
+  setTimeout(() => { el.className = ''; }, 3000);
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function confetti() {
+  const colors = ['#f0e040','#40e0f0','#f04080','#40e080','#ffffff'];
+  for (let i = 0; i < 40; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.cssText = `
+      left: ${Math.random() * 100}vw;
+      top: -10px;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      transform: rotate(${Math.random()*360}deg);
+      animation-duration: ${1.5 + Math.random() * 2}s;
+      animation-delay: ${Math.random() * 0.5}s;
+      width: ${6 + Math.random() * 10}px;
+      height: ${6 + Math.random() * 10}px;
+      border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+}
+
+window.doLogin = doLogin;
+window.doLogout = doLogout;
+
+// Start
+init();
+</script>
+</body>
+</html>
